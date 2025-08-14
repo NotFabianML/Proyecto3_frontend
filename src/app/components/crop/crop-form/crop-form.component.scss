@@ -1,0 +1,16 @@
+.crop-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.conditional-input-group {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+
+  > * {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}

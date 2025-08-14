@@ -1,0 +1,51 @@
+<p-toast></p-toast>
+
+<div class="farm-page-container">
+  <div class="toolbar">
+    <h2>Mis Fincas</h2>
+    <div class="actions">
+        <button pButton type="button" label="Crear Finca" icon="pi pi-plus" (click)="showCreateDialog()"></button>
+    </div>
+</div>
+<div class="mb-3">
+    <div class="search-container">
+        <i class="bi bi-search search-icon"></i>
+        <input
+          type="text"
+          [(ngModel)]="searchTerm"
+          (ngModelChange)="onSearchChange($event)"
+          placeholder="Buscar finca por nombre, país o provincia"
+          class="search-input"
+        />
+      </div>
+  </div>
+  <p-dataView #dv [value]="filteredFarms" layout="grid" [loading]="isLoading">
+    <ng-template pTemplate="grid" let-items>
+        <div class="grid">
+            <div *ngFor="let farmItem of items" class="farm-card-wrapper">
+                <app-farm-card *ngIf="farmItem && farmItem.farm" [farmData]="farmItem" (viewDetails)="handleViewDetails($event)"></app-farm-card>
+            </div>
+        </div>
+    </ng-template>
+
+    <ng-template pTemplate="loading">
+        <div class="grid">
+            <div *ngFor="let item of skeletonItems" class="farm-card-wrapper">
+                <p-skeleton height="400px" styleClass="mb-2"></p-skeleton>
+            </div>
+        </div>
+    </ng-template>
+
+    <ng-template pTemplate="emptymessage">
+        <div class="empty-message">
+            <i class="pi pi-map-marker" style="font-size: 3rem"></i>
+            <p>No se encontraron fincas que coincidan con la búsqueda.</p>
+            <small>Intenta con otro término o crea una nueva finca.</small>
+        </div>
+    </ng-template>
+  </p-dataView>
+</div>
+
+<p-dialog header="Crear Nueva Finca" [(visible)]="displayDialog" [modal]="true" [style]="{width: '70vw', 'min-width': '750px'}" [draggable]="false" [resizable]="false">
+    <app-farm-form *ngIf="displayDialog" [form]="farmForm" (save)="handleSave()"></app-farm-form>
+</p-dialog>

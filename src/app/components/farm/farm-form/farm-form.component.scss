@@ -1,0 +1,19 @@
+.farm-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.location-map {
+  height: 250px;
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+  margin-top: 0.5rem;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}

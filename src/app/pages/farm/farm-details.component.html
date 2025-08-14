@@ -1,0 +1,820 @@
+<div class="farm-details-page">
+  <a class="farm-back-link" routerLink="/app/farm">← Volver a Mis Fincas</a>
+  <ng-container *ngIf="loading">
+    <div class="farm-card">Cargando finca...</div>
+  </ng-container>
+  <ng-container *ngIf="error && !loading">
+    <div class="farm-error">{{ error }}</div>
+  </ng-container>
+  <ng-container *ngIf="farm && !loading">
+    <h2 class="farm-card-title">{{ farm.farmName }}</h2>
+    <div class="farm-card">
+      <ul class="nav nav-tabs mb-3" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active" id="details-tab" data-bs-toggle="tab" data-bs-target="#details" type="button"
+            role="tab" aria-controls="details" aria-selected="true" (click)="triggerResizeEvent()">Detalles</button>
+        </li>
+
+        <li class="nav-item d-flex align-items-center" role="presentation" style="gap: 0.5rem;">
+          <button class="nav-link" id="animales-tab" data-bs-toggle="tab" data-bs-target="#animales" type="button"
+            role="tab" aria-controls="animales" aria-selected="false" (click)="triggerResizeEvent()">Animales</button>
+        </li>
+
+        <!-- Parcelas Tab -->
+        <li class="nav-item d-flex align-items-center" role="presentation" style="gap: 0.5rem;">
+          <button class="nav-link" id="parcelas-tab" data-bs-toggle="tab" data-bs-target="#parcelas" type="button"
+            role="tab" aria-controls="parcelas" aria-selected="false" (click)="triggerResizeEvent()">Parcelas</button>
+        </li>
+      </ul>
+      <div class="tab-content">
+        <div class="tab-pane fade show active" id="details" role="tabpanel" aria-labelledby="details-tab">
+          <div class="pt-3 pb-4 px-4 pr-4">
+            <p class="farm-card-text"><strong>Ubicación:</strong></p>
+            <div class="mb-4">
+              <app-location-map *ngIf="farm.farmLocation" [coordinates]="farm.farmLocation"></app-location-map>
+            </div>
+            <p class="farm-card-text"><strong>País:</strong> {{ farm.farmCountry }}</p>
+            <p class="farm-card-text"><strong>Provincia:</strong> {{ farm.farmStateProvince }}</p>
+            <p class="farm-card-text"><strong>Tamaño:</strong> {{ farm.farmSize }} {{ farm.farmMeasureUnit }}</p>
+            <p class="farm-card-text"><strong>Direcciones:</strong> {{ farm.farmOtherDirections }}</p>
+            <details class="farm-accordion mt-3">
+              <summary>
+                <span>Información Técnica</span>
+                <svg class="accordion-arrow" width="18" height="18" viewBox="0 0 18 18" fill="none"
+                  xmlns="http://www.w3.org/2000/svg">
+                  <path d="M5 7.5L9 11.5L13 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" />
+                </svg>
+              </summary>
+              <div class="accordion-content">
+                <p class="farm-card-text"><strong>pH del suelo:</strong> {{ (technicalInfo?.soilPh === '' ||
+                  technicalInfo?.soilPh == null || technicalInfo === null) ? 'n/a' : technicalInfo?.soilPh }}</p>
+                <p class="farm-card-text"><strong>Nutrientes del suelo:</strong> {{ (technicalInfo?.soilNutrients === ''
+                  || technicalInfo?.soilNutrients == null || technicalInfo === null) ? 'n/a' :
+                  technicalInfo?.soilNutrients }}</p>
+                <p class="farm-card-text"><strong>Sistema de riego:</strong> {{ technicalInfo === null ? 'n/a' :
+                  (technicalInfo?.irrigationSystem === null || technicalInfo?.irrigationSystem === undefined ? 'n/a' :
+                  (technicalInfo?.irrigationSystem ? 'Sí' : 'No')) }}</p>
+                <p class="farm-card-text"><strong>Tipo de riego:</strong> {{ (technicalInfo?.irrigationSystemType === ''
+                  || technicalInfo?.irrigationSystemType == null || technicalInfo === null) ? 'n/a' :
+                  technicalInfo?.irrigationSystemType }}</p>
+                <p class="farm-card-text"><strong>Agua disponible:</strong> {{ technicalInfo === null ? 'n/a' :
+                  (technicalInfo?.waterAvailable === null || technicalInfo?.waterAvailable === undefined ? 'n/a' :
+                  (technicalInfo?.waterAvailable ? 'Sí' : 'No')) }}</p>
+                <p class="farm-card-text"><strong>Tipo de uso de agua:</strong> {{ (technicalInfo?.waterUsageType === ''
+                  || technicalInfo?.waterUsageType == null || technicalInfo === null) ? 'n/a' :
+                  technicalInfo?.waterUsageType }}</p>
+                <p class="farm-card-text"><strong>Uso de fertilizantes/pesticidas:</strong> {{ technicalInfo === null ?
+                  'n/a' : (technicalInfo?.fertilizerPesticideUse === null || technicalInfo?.fertilizerPesticideUse ===
+                  undefined ? 'n/a' : (technicalInfo?.fertilizerPesticideUse ? 'Sí' : 'No')) }}</p>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <div class="tab-pane fade" id="animales" role="tabpanel" aria-labelledby="animales-tab">
+          <div class="pt-3 pb-4 px-4 pr-4">
+            <ng-container *ngIf="animalGroupsLoading">
+              <div class="farm-card">Cargando grupos de animales...</div>
+            </ng-container>
+            <ng-container *ngIf="animalGroupsError && !animalGroupsLoading">
+              <div class="farm-error">{{ animalGroupsError }}</div>
+            </ng-container>
+            <ng-container *ngIf="!animalGroupsLoading && !animalGroupsError">
+              <ng-container *ngIf="animalGroups.length > 0; else noGroups">
+                <!-- Filtro de busqueda para grupos de animales -->
+                <div class="mb-3">
+                  <div class="search-container">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text" class="search-input" placeholder="Buscar grupo de animales por nombre..."
+                      [(ngModel)]="groupSearchTerm" />
+                  </div>
+                </div>
+
+                <div class="animal-group-cards-grid">
+                  <app-animal-group-card *ngFor="let group of filteredAnimalGroups()" [groupAnimal]="group"
+                    [farmId]="farmId || ''"></app-animal-group-card>
+                </div>
+
+                <div *ngIf="filteredAnimalGroups().length === 0" class="text-center mt-4">
+                  No se encontraron resultados.
+                </div>
+
+
+              </ng-container>
+              <ng-template #noGroups>
+                <div class="farm-card-text">No hay grupos de animales registrados para esta finca.</div>
+              </ng-template>
+
+              <div class="mt-3 d-flex justify-content-end">
+                <button class="btn btn-primary" style="background-color: var(--color-accent);"
+                  (click)="openNewGroupModal()">Nuevo grupo</button>
+              </div>
+
+              <ng-template #newGroupModal>
+                <app-modal [hideFooter]="true" [useCustomBackGround]="true" modalBodyClass="modal-body dark-modal-body"
+                  modalContentClass="modal-content dark-modal-content create-farm-modal">
+                  <form [formGroup]="newGroupForm" (ngSubmit)="submitNewGroup()" class="farm-create" novalidate
+                    autocomplete="off">
+                    <div class="modal-body mb-4 dark-modal-body">
+                      <h2 class="modal-title-text">Nuevo grupo de animales</h2>
+                      <div class="form-group mt-3">
+                        <label style="color: white">Nombre del grupo</label>
+                        <input formControlName="groupName" class="form-control farm-input"
+                          [class.is-invalid]="newGroupForm.controls['groupName'].invalid && (newGroupForm.controls['groupName'].dirty || newGroupForm.controls['groupName'].touched)" />
+                        <div
+                          *ngIf="newGroupForm.controls['groupName'].invalid && (newGroupForm.controls['groupName'].dirty || newGroupForm.controls['groupName'].touched)"
+                          class="invalid-feedback">
+                          Este campo es requerido.</div>
+                      </div>
+
+                      <div class="form-group mt-3">
+                        <label style="color: white">Unidad de medida</label>
+                        <select formControlName="measure" class="form-control farm-input"
+                          [class.is-invalid]="newGroupForm.controls['measure'].invalid && (newGroupForm.controls['measure'].dirty || newGroupForm.controls['measure'].touched)">
+                          <option value="">Seleccione unidad</option>
+                          <option value="kilos">Kilos</option>
+                          <option value="litros">Litros</option>
+                        </select>
+                        <div
+                          *ngIf="newGroupForm.controls['measure'].invalid && (newGroupForm.controls['measure'].dirty || newGroupForm.controls['measure'].touched)"
+                          class="invalid-feedback">
+                          Este campo es requerido.</div>
+                      </div>
+                      <div class="form-group mt-3">
+                        <label style="color: white">Tipo de producción</label>
+                        <select formControlName="productionType" class="form-control farm-input"
+                          [class.is-invalid]="newGroupForm.controls['productionType'].invalid && (newGroupForm.controls['productionType'].dirty || newGroupForm.controls['productionType'].touched)">
+                          <option value="">Seleccione tipo</option>
+                          <option *ngFor="let type of productionTypes" [value]="type">{{ type }}</option>
+                        </select>
+                        <div
+                          *ngIf="newGroupForm.controls['productionType'].invalid && (newGroupForm.controls['productionType'].dirty || newGroupForm.controls['productionType'].touched)"
+                          class="invalid-feedback">
+                          Este campo es requerido.</div>
+                      </div>
+                    </div>
+                    <div class="modal-footer dark-modal-footer">
+                      <button type="button" class="farm-btn-cancel btn btn-danger"
+                        (click)="closeNewGroupModal()">Cancelar</button>
+                      <button type="submit" class="btn btn-edit farm-btn farm-btn-edit"
+                        [disabled]="newGroupLoading || newGroupForm.invalid">Guardar</button>
+                    </div>
+                  </form>
+                </app-modal>
+              </ng-template>
+
+              <div *ngIf="showNewGroupModal">
+                <div class="modal-backdrop"></div>
+                <div class="centered-modal create-farm">
+                  <ng-container *ngTemplateOutlet="newGroupModal"></ng-container>
+                </div>
+              </div>
+
+            </ng-container>
+          </div>
+        </div>
+
+        <!-- Parcelas Tab Content -->
+        <div class="tab-pane fade" id="parcelas" role="tabpanel" aria-labelledby="parcelas-tab">
+          <div class="pt-3 pb-4 px-4 pr-4">
+            <div class="mb-4">
+              <div class="parcelas-indication-message">
+                <span class="parcela-tips-icon">💡</span>
+                <span class="parcela-tips-text">Interacción: Puede hacer clic en las figuras (parcelas) del mapa para
+                  ver la información detallada de cada parcela.</span>
+              </div>
+              <app-location-map *ngIf="farm?.farmLocation" [coordinates]="farm.farmLocation"
+                [parcelasGeoJSON]="parcelasGeoJSON" (clickFigures)="onClickFigures($event)"></app-location-map>
+              <div *ngIf="selectedParcela" class="parcelas-details-box mt-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                  <div class="details-title">Información de la parcela seleccionada</div>
+                  <div>
+                    <button class="btn btn-sm btn-edit me-2"
+                      style="background: var(--color-accent); color: #fff; border: none;"
+                      (click)="onClickEditarParcela()">Editar</button>
+                    <button class="btn btn-sm btn-danger"
+                      style="background: var(--color-warning); color: #fff; border: none;"
+                      (click)="onClickEliminarParcela()">Eliminar</button>
+                  </div>
+                </div>
+                <div class="details-title">Detalles de la Parcela</div>
+                <div class="details-row">
+                  <span class="details-label">Nombre:</span>
+                  <span class="details-value">{{ selectedParcela.plotName }}</span>
+                </div>
+                <div class="details-row">
+                  <span class="details-label">Descripción:</span>
+                  <span class="details-value">{{ selectedParcela.plotDescription }}</span>
+                </div>
+                <div class="details-row">
+                  <span class="details-label">Uso actual:</span>
+                  <span class="details-value">{{ selectedParcela.currentUsage }}</span>
+                </div>
+                <div class="details-row">
+                  <span class="details-label">Tipo de parcela:</span>
+                  <span class="details-value">{{ selectedParcela.plotType }}</span>
+                </div>
+                <!-- Gestión de parcelas section -->
+                <div class="details-title mt-4">Gestión de parcelas</div>
+                <div class="d-flex justify-content-end mb-2">
+                  <button class="btn btn-primary" style="background-color: var(--color-accent);"
+                    (click)="openGestionParcelaModal()">Crear gestión parcela</button>
+                </div>
+                <div class="mb-4">
+                  <!-- Loading state -->
+                  <div *ngIf="gestionParcelasLoading" class="text-center p-4">
+                    <app-loader size="md" />
+                    <p>Cargando registros de gestión...</p>
+                  </div>
+                  
+                  <!-- Error state -->
+                  <div *ngIf="gestionParcelasError && !gestionParcelasLoading" class="alert alert-danger">
+                    {{ gestionParcelasError }}
+                  </div>
+                  
+                  <!-- Table -->
+                  <p-table
+                    *ngIf="!gestionParcelasLoading && !gestionParcelasError"
+                    #dtGestion
+                    [value]="filteredGestionParcelas"
+                    [rows]="5"
+                    [paginator]="true"
+                    [rowHover]="true"
+                    [loading]="gestionParcelasLoading"
+                    paginatorPosition="bottom"
+                    currentPageReportTemplate="Mostrando {first} a {last} de {totalRecords} gestiones"
+                    [rowsPerPageOptions]="[5, 10, 20]"
+                    [tableStyle]="{ 'min-width': '60rem' }"
+                    [globalFilterFields]="['cropName', 'actionName', 'actionDate', 'valueSpent', 'measureValue', 'measureUnit']"
+                  >
+                    <ng-template pTemplate="caption">
+                      <div class="table-header">
+                        <span class="p-input-icon-left">
+                          <i class="pi pi-search"></i>
+                          <input 
+                            pInputText 
+                            type="text" 
+                            (input)="dtGestion.filterGlobal($any($event.target).value, 'contains')" 
+                            placeholder="Buscar gestión por cultivo o acción..." 
+                          />
+                        </span>
+                      </div>
+                    </ng-template>
+                    <ng-template pTemplate="header">
+                      <tr>
+                        <th>Imagen</th>
+                        <th pSortableColumn="cropName">Cultivo <p-sortIcon field="cropName"></p-sortIcon></th>
+                        <th pSortableColumn="actionName">Acción <p-sortIcon field="actionName"></p-sortIcon></th>
+                        <th pSortableColumn="actionDate">Fecha <p-sortIcon field="actionDate"></p-sortIcon></th>
+                        <th pSortableColumn="valueSpent">Valor Gastado <p-sortIcon field="valueSpent"></p-sortIcon></th>
+                        <th>Medida</th>
+                        <th class="text-center">Acciones</th>
+                      </tr>
+                    </ng-template>
+                    <ng-template pTemplate="body" let-gestion>
+                      <tr>
+                        <td>
+                          <div class="image-card">
+                            <img [src]="gestion.actionPictureUrl" alt="Imagen gestión" style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.12);" />
+                          </div>
+                        </td>
+                        <td>
+                          {{ gestion.cropName }}
+                        </td>
+                        <td>{{ gestion.actionName }}</td>
+                        <td>{{ gestion.actionDate }}</td>
+                        <td>₡{{ gestion.valueSpent }}</td>
+                        <td>{{ gestion.measureValue }} {{ gestion.measureUnit }}</td>
+                        <td class="text-center">
+                          <button pButton pRipple pTooltip="Editar" tooltipPosition="top" icon="pi pi-pencil" class="p-element p-button-rounded p-button-text p-button p-component p-button-icon-only me-2" (click)="openEditGestionModal(gestion); $event.stopPropagation()"><span class="p-button-icon pi pi-pencil" aria-hidden="true"></span></button>
+                          <button pButton pRipple pTooltip="Eliminar" tooltipPosition="top" icon="pi pi-trash" class="p-element p-button-rounded p-button-text p-button p-component p-button-icon-only p-button-danger" (click)="openDeleteGestionModal(gestion); $event.stopPropagation()"><span class="p-button-icon pi pi-trash" aria-hidden="true"></span></button>
+                        </td>
+                      </tr>
+                    </ng-template>
+                    <ng-template pTemplate="emptymessage">
+                      <tr>
+                        <td colspan="5" class="text-center p-4">
+                          <ng-container *ngIf="selectedParcela; else noParcelaSelected">
+                            No se encontraron gestiones que coincidan con la búsqueda.
+                          </ng-container>
+                          <ng-template #noParcelaSelected>
+                            Seleccione una parcela en el mapa para ver sus registros de gestión.
+                          </ng-template>
+                        </td>
+                      </tr>
+                    </ng-template>
+                  </p-table>
+                </div>
+                <!-- Create Modal for gestión parcela -->
+                <ng-template #gestionParcelaModal>
+                  <app-modal [hideFooter]="true" [useCustomBackGround]="true"
+                    modalBodyClass="modal-body dark-modal-body"
+                    modalContentClass="modal-content dark-modal-content create-farm-modal">
+                    <form [formGroup]="gestionParcelaForm" (ngSubmit)="submitGestionParcela()" class="farm-create"
+                      novalidate autocomplete="off">
+                      <div class="modal-body mb-4 dark-modal-body">
+                        <h2 class="modal-title-text">Crear gestión de parcela</h2>
+                        <div class="form-group mt-3">
+                          <label style="color: white">Cultivo</label>
+                          <select formControlName="cropId" class="form-control farm-input"
+                            [class.is-invalid]="gestionParcelaForm.controls['cropId'].invalid && (gestionParcelaForm.controls['cropId'].dirty || gestionParcelaForm.controls['cropId'].touched)">
+                            <option value="" disabled>Seleccione un cultivo</option>
+                            <option *ngFor="let crop of gestionCrops" [value]="crop.id">{{ crop.cropName }}</option>
+                          </select>
+                          <div
+                            *ngIf="gestionParcelaForm.controls['cropId'].invalid && (gestionParcelaForm.controls['cropId'].dirty || gestionParcelaForm.controls['cropId'].touched)"
+                            class="invalid-feedback">
+                            Seleccione un cultivo.</div>
+                        </div>
+                        <div class="form-group mt-3">
+                          <label style="color: white">Nombre de la acción</label>
+                          <input formControlName="actionName" class="form-control farm-input"
+                            [class.is-invalid]="gestionParcelaForm.controls['actionName'].invalid && (gestionParcelaForm.controls['actionName'].dirty || gestionParcelaForm.controls['actionName'].touched)" />
+                          <div
+                            *ngIf="gestionParcelaForm.controls['actionName'].invalid && (gestionParcelaForm.controls['actionName'].dirty || gestionParcelaForm.controls['actionName'].touched)"
+                            class="invalid-feedback">
+                            Este campo es requerido.</div>
+                        </div>
+                        <div class="form-group mt-3">
+                          <label style="color: white">URL de la imagen</label>
+                          <div style="display: flex; gap: 1rem; align-items: flex-start;">
+                            <input formControlName="actionPictureUrl" class="form-control farm-input" style="flex: 1;"
+                              [class.is-invalid]="gestionParcelaForm.controls['actionPictureUrl'].invalid && (gestionParcelaForm.controls['actionPictureUrl'].dirty || gestionParcelaForm.controls['actionPictureUrl'].touched)" />
+                            <div class="image-preview-box"
+                              style="width: 180px; height: 180px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid #ccc; background: #f8f8f8;">
+                              <img #previewImg
+                                [src]="gestionParcelaForm.value.actionPictureUrl ? gestionParcelaForm.value.actionPictureUrl : 'https://blocks.astratic.com/img/general-img-landscape.png'"
+                                alt="Vista previa de la imagen"
+                                style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px;"
+                                (error)="onImageError($event)" />
+                            </div>
+                          </div>
+                          <div
+                            *ngIf="gestionParcelaForm.controls['actionPictureUrl'].invalid && (gestionParcelaForm.controls['actionPictureUrl'].dirty || gestionParcelaForm.controls['actionPictureUrl'].touched)"
+                            class="invalid-feedback">
+                            Este campo es requerido.</div>
+                        </div>
+                        <div class="form-group mt-3">
+                          <label style="color: white">Unidad de medida</label>
+                          <select formControlName="measureUnit" class="form-control farm-input"
+                            [class.is-invalid]="gestionParcelaForm.controls['measureUnit'].invalid && (gestionParcelaForm.controls['measureUnit'].dirty || gestionParcelaForm.controls['measureUnit'].touched)">
+                            <option value="" disabled>Seleccione una unidad</option>
+                            <option *ngFor="let unit of measureUnits" [value]="unit">{{ unit }}</option>
+                          </select>
+                          <div
+                            *ngIf="gestionParcelaForm.controls['measureUnit'].invalid && (gestionParcelaForm.controls['measureUnit'].dirty || gestionParcelaForm.controls['measureUnit'].touched)"
+                            class="invalid-feedback">
+                            Este campo es requerido.</div>
+                        </div>
+                        <div class="form-group mt-3">
+                          <label style="color: white">Valor de medida</label>
+                          <input formControlName="measureValue" class="form-control farm-input" type="number" min="0"
+                            step="0.01"
+                            [class.is-invalid]="gestionParcelaForm.controls['measureValue'].invalid && (gestionParcelaForm.controls['measureValue'].dirty || gestionParcelaForm.controls['measureValue'].touched)" />
+                          <div
+                            *ngIf="gestionParcelaForm.controls['measureValue'].invalid && (gestionParcelaForm.controls['measureValue'].dirty || gestionParcelaForm.controls['measureValue'].touched)"
+                            class="invalid-feedback">
+                            Ingrese un número válido.</div>
+                        </div>
+                        <div class="form-group mt-3">
+                          <label style="color: white">Valor gastado</label>
+                          <input formControlName="valueSpent" class="form-control farm-input" type="number" min="0"
+                            step="0.01"
+                            [class.is-invalid]="gestionParcelaForm.controls['valueSpent'].invalid && (gestionParcelaForm.controls['valueSpent'].dirty || gestionParcelaForm.controls['valueSpent'].touched)" />
+                          <div
+                            *ngIf="gestionParcelaForm.controls['valueSpent'].invalid && (gestionParcelaForm.controls['valueSpent'].dirty || gestionParcelaForm.controls['valueSpent'].touched)"
+                            class="invalid-feedback">
+                            Ingrese un número válido.</div>
+                        </div>
+                        <div class="form-group mt-3">
+                          <label style="color: white">Fecha de la acción</label>
+                          <p-calendar formControlName="actionDate" class="farm-input" [showTime]="true"
+                            [showIcon]="true" dateFormat="yy-mm-dd" hourFormat="24" inputId="actionDate"
+                            [class.is-invalid]="gestionParcelaForm.controls['actionDate'].invalid && (gestionParcelaForm.controls['actionDate'].dirty || gestionParcelaForm.controls['actionDate'].touched)"></p-calendar>
+                          <div
+                            *ngIf="gestionParcelaForm.controls['actionDate'].invalid && (gestionParcelaForm.controls['actionDate'].dirty || gestionParcelaForm.controls['actionDate'].touched)"
+                            class="invalid-feedback">
+                            Este campo es requerido.</div>
+                        </div>
+                      </div>
+                      <div class="modal-footer dark-modal-footer">
+                        <button type="button" class="farm-btn-cancel btn btn-danger"
+                          (click)="closeGestionParcelaModal()">Cancelar</button>
+                        <button type="submit" class="btn btn-edit farm-btn farm-btn-edit"
+                          [disabled]="gestionParcelaForm.invalid">Guardar</button>
+                      </div>
+                    </form>
+                  </app-modal>
+                </ng-template>
+                <!-- Edit Modal for gestión parcela -->
+                <ng-template #editGestionParcelaModal>
+                  <app-modal [hideFooter]="true" [useCustomBackGround]="true"
+                    modalBodyClass="modal-body dark-modal-body"
+                    modalContentClass="modal-content dark-modal-content create-farm-modal">
+                    <form [formGroup]="editGestionParcelaForm" (ngSubmit)="submitEditGestionParcela()" class="farm-create"
+                      novalidate autocomplete="off">
+                      <div class="modal-body mb-4 dark-modal-body">
+                        <h2 class="modal-title-text">Editar gestión de parcela</h2>
+                        <div class="form-group mt-3">
+                          <label style="color: white">Cultivo</label>
+                          <select formControlName="cropId" class="form-control farm-input"
+                            [class.is-invalid]="editGestionParcelaForm.controls['cropId'].invalid && (editGestionParcelaForm.controls['cropId'].dirty || editGestionParcelaForm.controls['cropId'].touched)">
+                            <option value="" disabled>Seleccione un cultivo</option>
+                            <option *ngFor="let crop of gestionCrops" [value]="crop.id">{{ crop.cropName }}</option>
+                          </select>
+                          <div
+                            *ngIf="editGestionParcelaForm.controls['cropId'].invalid && (editGestionParcelaForm.controls['cropId'].dirty || editGestionParcelaForm.controls['cropId'].touched)"
+                            class="invalid-feedback">
+                            Seleccione un cultivo.</div>
+                        </div>
+                        <div class="form-group mt-3">
+                          <label style="color: white">Nombre de la acción</label>
+                          <input formControlName="actionName" class="form-control farm-input"
+                            [class.is-invalid]="editGestionParcelaForm.controls['actionName'].invalid && (editGestionParcelaForm.controls['actionName'].dirty || editGestionParcelaForm.controls['actionName'].touched)" />
+                          <div
+                            *ngIf="editGestionParcelaForm.controls['actionName'].invalid && (editGestionParcelaForm.controls['actionName'].dirty || editGestionParcelaForm.controls['actionName'].touched)"
+                            class="invalid-feedback">
+                            Este campo es requerido.</div>
+                        </div>
+                        <div class="form-group mt-3">
+                          <label style="color: white">URL de la imagen</label>
+                          <div style="display: flex; gap: 1rem; align-items: flex-start;">
+                            <input formControlName="actionPictureUrl" class="form-control farm-input" style="flex: 1;"
+                              [class.is-invalid]="editGestionParcelaForm.controls['actionPictureUrl'].invalid && (editGestionParcelaForm.controls['actionPictureUrl'].dirty || editGestionParcelaForm.controls['actionPictureUrl'].touched)" />
+                            <div class="image-preview-box"
+                              style="width: 180px; height: 180px; display: flex; align-items: center; justify-content: center; border-radius: 8px; border: 1px solid #ccc; background: #f8f8f8;">
+                              <img #previewImg
+                                [src]="editGestionParcelaForm.value.actionPictureUrl ? editGestionParcelaForm.value.actionPictureUrl : 'https://blocks.astratic.com/img/general-img-landscape.png'"
+                                alt="Vista previa de la imagen"
+                                style="max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 8px;"
+                                (error)="onImageError($event)" />
+                            </div>
+                          </div>
+                          <div
+                            *ngIf="editGestionParcelaForm.controls['actionPictureUrl'].invalid && (editGestionParcelaForm.controls['actionPictureUrl'].dirty || editGestionParcelaForm.controls['actionPictureUrl'].touched)"
+                            class="invalid-feedback">
+                            Este campo es requerido.</div>
+                        </div>
+                        <div class="form-group mt-3">
+                          <label style="color: white">Unidad de medida</label>
+                          <select formControlName="measureUnit" class="form-control farm-input"
+                            [class.is-invalid]="editGestionParcelaForm.controls['measureUnit'].invalid && (editGestionParcelaForm.controls['measureUnit'].dirty || editGestionParcelaForm.controls['measureUnit'].touched)">
+                            <option value="" disabled>Seleccione una unidad</option>
+                            <option *ngFor="let unit of measureUnits" [value]="unit">{{ unit }}</option>
+                          </select>
+                          <div
+                            *ngIf="editGestionParcelaForm.controls['measureUnit'].invalid && (editGestionParcelaForm.controls['measureUnit'].dirty || editGestionParcelaForm.controls['measureUnit'].touched)"
+                            class="invalid-feedback">
+                            Este campo es requerido.</div>
+                        </div>
+                        <div class="form-group mt-3">
+                          <label style="color: white">Valor de medida</label>
+                          <input formControlName="measureValue" class="form-control farm-input" type="number" min="0"
+                            step="0.01"
+                            [class.is-invalid]="editGestionParcelaForm.controls['measureValue'].invalid && (editGestionParcelaForm.controls['measureValue'].dirty || editGestionParcelaForm.controls['measureValue'].touched)" />
+                          <div
+                            *ngIf="editGestionParcelaForm.controls['measureValue'].invalid && (editGestionParcelaForm.controls['measureValue'].dirty || editGestionParcelaForm.controls['measureValue'].touched)"
+                            class="invalid-feedback">
+                            Ingrese un número válido.</div>
+                        </div>
+                        <div class="form-group mt-3">
+                          <label style="color: white">Valor gastado</label>
+                          <input formControlName="valueSpent" class="form-control farm-input" type="number" min="0"
+                            step="0.01"
+                            [class.is-invalid]="editGestionParcelaForm.controls['valueSpent'].invalid && (editGestionParcelaForm.controls['valueSpent'].dirty || editGestionParcelaForm.controls['valueSpent'].touched)" />
+                          <div
+                            *ngIf="editGestionParcelaForm.controls['valueSpent'].invalid && (editGestionParcelaForm.controls['valueSpent'].dirty || editGestionParcelaForm.controls['valueSpent'].touched)"
+                            class="invalid-feedback">
+                            Ingrese un número válido.</div>
+                        </div>
+                        <div class="form-group mt-3">
+                          <label style="color: white">Fecha de la acción</label>
+                          <p-calendar formControlName="actionDate" class="farm-input" [showTime]="true"
+                            [showIcon]="true" dateFormat="yy-mm-dd" hourFormat="24" inputId="actionDate"
+                            [class.is-invalid]="editGestionParcelaForm.controls['actionDate'].invalid && (editGestionParcelaForm.controls['actionDate'].dirty || editGestionParcelaForm.controls['actionDate'].touched)"></p-calendar>
+                          <div
+                            *ngIf="editGestionParcelaForm.controls['actionDate'].invalid && (editGestionParcelaForm.controls['actionDate'].dirty || editGestionParcelaForm.controls['actionDate'].touched)"
+                            class="invalid-feedback">
+                            Este campo es requerido.</div>
+                        </div>
+                      </div>
+                      <div class="modal-footer dark-modal-footer">
+                        <button type="button" class="farm-btn-cancel btn btn-danger"
+                          (click)="closeEditGestionParcelaModal()">Cancelar</button>
+                        <button type="submit" class="btn btn-edit farm-btn farm-btn-edit"
+                          [disabled]="editGestionParcelaForm.invalid">Guardar</button>
+                      </div>
+                    </form>
+                  </app-modal>
+                </ng-template>
+                <!-- Modal display for gestión parcela -->
+                <!-- Modal for confirming deletion of gestión parcela -->
+                <ng-template #deleteGestionModal>
+                  <app-modal [hideFooter]="true" [useCustomBackGround]="true" modalBodyClass="modal-body dark-modal-body" modalFooterClass="modal-footer dark-modal-footer" modalContentClass="modal-content dark-modal-content">
+                    <div>
+                      <div class="modal-body mb-4 dark-modal-body">
+                        <span class="modal-title-text">¿Está seguro que desea eliminar este registro de gestión?</span>
+                      </div>
+                      <div class="modal-footer dark-modal-footer">
+                        <button class="btn btn-cancel" (click)="closeDeleteGestionModal()">Cancelar</button>
+                        <button class="btn btn-delete" (click)="confirmDeleteGestion()">
+                          <span>Eliminar</span>
+                        </button>
+                      </div>
+                    </div>
+                  </app-modal>
+                </ng-template>
+                <div *ngIf="showDeleteGestionModal">
+                  <div class="modal-backdrop"></div>
+                  <div class="centered-modal">
+                    <ng-container *ngTemplateOutlet="deleteGestionModal"></ng-container>
+                  </div>
+                </div>
+                <div *ngIf="displayGestionDialog">
+                  <div class="modal-backdrop"></div>
+                  <div class="centered-modal create-farm">
+                    <ng-container *ngTemplateOutlet="gestionParcelaModal"></ng-container>
+                  </div>
+                </div>
+                <div *ngIf="displayEditGestionDialog">
+                  <div class="modal-backdrop"></div>
+                  <div class="centered-modal create-farm">
+                    <ng-container *ngTemplateOutlet="editGestionParcelaModal"></ng-container>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+            <div class="mt-3 d-flex justify-content-end">
+              <button class="btn btn-primary" style="background-color: var(--color-accent);"
+                (click)="showCreateParcelaDialog()">Nueva parcela</button>
+            </div>
+            <p-dialog [header]="editParcelaMode ? 'Editar Parcela' : 'Nueva Parcela'" [(visible)]="displayDialog"
+              [modal]="true" [style]="{width: '70vw', 'min-width': '750px'}" [draggable]="false" [resizable]="false">
+              <app-parcelas-form *ngIf="displayDialog" [form]="parcelaForm" [farmLocation]="farm.farmLocation"
+                [parcelasGeoJSON]="parcelasGeoJSON" [editMode]="editParcelaMode"
+                [title]="editParcelaMode ? 'Editar Parcela' : 'Nueva Parcela'" (save)="handleSave()"
+                (cancel)="displayDialog = false"></app-parcelas-form>
+            </p-dialog>
+          </div>
+        </div>
+      </div>
+      <div class="mt-4 d-flex gap-2">
+        <button class="btn btn-primary" (click)="openEditFarmModal()">Editar</button>
+        <button class="btn btn-danger" (click)="openDeleteModal()" [disabled]="deleteLoading">
+          <span *ngIf="!deleteLoading">Eliminar</span>
+          <app-loader *ngIf="deleteLoading" size="sm" />
+        </button>
+      </div>
+      <ng-template #editFarmModal>
+        <app-modal [hideFooter]="true" [useCustomBackGround]="true" modalBodyClass="modal-body dark-modal-body"
+          modalContentClass="modal-content dark-modal-content create-farm-modal">
+          <form [formGroup]="editFarmForm" (ngSubmit)="submitEditFarm()" class="farm-create" novalidate
+            autocomplete="off">
+            <div class="modal-body mb-4 dark-modal-body">
+              <h2 class="modal-title-text">Editar finca</h2>
+              <div class="form-group mt-3">
+                <label style="color: white">Nombre de la finca</label>
+                <input formControlName="farmName" class="form-control farm-input"
+                  [class.is-invalid]="editFarmSubmitted && editFarmForm.controls['farmName'].invalid" />
+                <div *ngIf="editFarmSubmitted && editFarmForm.controls['farmName'].invalid" class="invalid-feedback">
+                  Este campo es requerido.</div>
+              </div>
+              <div class="form-group mt-3">
+                <label style="color: white">Provincia</label>
+                <select formControlName="farmStateProvince" class="form-control farm-input"
+                  [class.is-invalid]="editFarmSubmitted && editFarmForm.controls['farmStateProvince'].invalid">
+                  <option
+                    *ngIf="editFarmForm.value.farmStateProvince && !provinces.includes(editFarmForm.value.farmStateProvince)"
+                    [value]="editFarmForm.value.farmStateProvince" disabled selected hidden>
+                    {{ editFarmForm.value.farmStateProvince }}
+                  </option>
+                  <option *ngFor="let province of provinces" [value]="province">{{ province }}</option>
+                </select>
+                <div *ngIf="editFarmSubmitted && editFarmForm.controls['farmStateProvince'].invalid"
+                  class="invalid-feedback">Este campo es requerido.</div>
+              </div>
+              <div class="form-group mt-3">
+                <label style="color: white">Otras direcciones</label>
+                <input formControlName="farmOtherDirections" class="form-control farm-input"
+                  [class.is-invalid]="editFarmSubmitted && editFarmForm.controls['farmOtherDirections'].invalid" />
+                <div *ngIf="editFarmSubmitted && editFarmForm.controls['farmOtherDirections'].invalid"
+                  class="invalid-feedback">Este campo es requerido.</div>
+              </div>
+              <div class="form-group mt-3">
+                <label style="color: white">Ubicación (seleccione en el mapa)</label>
+                <div class="d-flex align-items-center gap-2">
+                  <span class="p-input-icon-right">
+                    <i *ngIf="isSearchingLocation" class="pi pi-spin pi-spinner"></i>
+                    <i *ngIf="!isSearchingLocation" class="pi pi-search"></i>
+                    <input #searchLocationInput pInputText (input)="onLocationInput()"
+                      placeholder="Ej: San José, Costa Rica" />
+                  </span>
+
+                  <input formControlName="farmLocation" class="form-control farm-input" readonly
+                    [class.is-invalid]="editFarmSubmitted && editFarmForm.controls['farmLocation'].invalid" />
+                </div>
+                <div id="edit-farm-map" class="location-map"></div>
+                <div *ngIf="editFarmSubmitted && editFarmForm.controls['farmLocation'].invalid"
+                  class="invalid-feedback">Debe seleccionar una ubicación en el mapa.</div>
+              </div>
+              <div class="form-group mt-3">
+                <label style="color: white">Tamaño</label>
+                <input formControlName="farmSize" class="form-control farm-input" type="number" min="0" step="0.01"
+                  [class.is-invalid]="editFarmSubmitted && editFarmForm.controls['farmSize'].invalid" />
+                <div *ngIf="editFarmSubmitted && editFarmForm.controls['farmSize'].invalid" class="invalid-feedback">
+                  Ingrese un número válido.</div>
+              </div>
+              <div class="form-group mt-3 mb-3">
+                <label style="color: white">Unidad de medida</label>
+                <select formControlName="farmMeasureUnit" class="form-control farm-input"
+                  [class.is-invalid]="editFarmSubmitted && editFarmForm.controls['farmMeasureUnit'].invalid">
+                  <option
+                    *ngIf="editFarmForm.value.farmMeasureUnit && !measureUnits.includes(editFarmForm.value.farmMeasureUnit)"
+                    [value]="editFarmForm.value.farmMeasureUnit" disabled selected hidden>
+                    {{ editFarmForm.value.farmMeasureUnit }}
+                  </option>
+                  <option *ngFor="let unit of measureUnits" [value]="unit">{{ unit }}</option>
+                </select>
+                <div *ngIf="editFarmSubmitted && editFarmForm.controls['farmMeasureUnit'].invalid"
+                  class="invalid-feedback">Este campo es requerido.</div>
+              </div>
+              <details class="farm-accordion mt-3">
+                <summary>
+                  <span>Información Técnica</span>
+                  <svg class="accordion-arrow" width="18" height="18" viewBox="0 0 18 18" fill="none"
+                    xmlns="http://www.w3.org/2000/svg">
+                    <path d="M5 7.5L9 11.5L13 7.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                      stroke-linejoin="round" />
+                  </svg>
+                </summary>
+                <div class="accordion-content">
+                  <div class="form-group mt-2">
+                    <label style="color: white">pH del suelo</label>
+                    <select formControlName="soilPh" class="form-control farm-input">
+                      <option
+                        *ngIf="editFarmForm.value.soilPh && ['Ácido','Neutro','Alcalino'].indexOf(editFarmForm.value.soilPh) === -1 && editFarmForm.value.soilPh !== ''"
+                        [value]="editFarmForm.value.soilPh" disabled selected hidden>
+                        {{ editFarmForm.value.soilPh }}
+                      </option>
+                      <option value="">No sé</option>
+                      <option value="Ácido">Ácido</option>
+                      <option value="Neutro">Neutro</option>
+                      <option value="Alcalino">Alcalino</option>
+                    </select>
+                  </div>
+                  <div class="form-group mt-2">
+                    <label style="color: white">Nutrientes del suelo</label>
+                    <select formControlName="soilNutrients" class="form-control farm-input">
+                      <option
+                        *ngIf="editFarmForm.value.soilNutrients && ['Bajo','Medio','Alto'].indexOf(editFarmForm.value.soilNutrients) === -1 && editFarmForm.value.soilNutrients !== ''"
+                        [value]="editFarmForm.value.soilNutrients" disabled selected hidden>
+                        {{ editFarmForm.value.soilNutrients }}
+                      </option>
+                      <option value="">No sé</option>
+                      <option value="Bajo">Bajo</option>
+                      <option value="Medio">Medio</option>
+                      <option value="Alto">Alto</option>
+                    </select>
+                  </div>
+                  <div class="mt-3 d-flex justify-content-end">
+                    <button class="btn btn-primary" style="background-color: var(--color-accent);"
+                      (click)="showCreateParcelaDialog()">Nueva parcela</button>
+                  </div>
+                  <div class="form-group mt-2">
+                    <label style="color: white">Sistema de riego</label>
+                    <select formControlName="irrigationSystem" class="form-control farm-input boolean-select">
+                      <option
+                        *ngIf="editFarmForm.value.irrigationSystem !== null && editFarmForm.value.irrigationSystem !== true && editFarmForm.value.irrigationSystem !== false"
+                        [ngValue]="editFarmForm.value.irrigationSystem" disabled selected hidden>
+                        {{ editFarmForm.value.irrigationSystem }}
+                      </option>
+                      <option [ngValue]="null">No sé</option>
+                      <option [ngValue]="true">Sí</option>
+                      <option [ngValue]="false">No</option>
+                    </select>
+                  </div>
+                  <div class="form-group mt-2">
+                    <label style="color: white">Tipo de sistema de riego</label>
+                    <select formControlName="irrigationSystemType" class="form-control farm-input">
+                      <option
+                        *ngIf="editFarmForm.value.irrigationSystemType && ['Goteo','Aspersión','Superficie','Otro'].indexOf(editFarmForm.value.irrigationSystemType) === -1 && editFarmForm.value.irrigationSystemType !== ''"
+                        [value]="editFarmForm.value.irrigationSystemType" disabled selected hidden>
+                        {{ editFarmForm.value.irrigationSystemType }}
+                      </option>
+                      <option value="">No sé</option>
+                      <option value="Goteo">Goteo</option>
+                      <option value="Aspersión">Aspersión</option>
+                      <option value="Superficie">Superficie</option>
+                      <option value="Otro">Otro</option>
+                    </select>
+                  </div>
+                  <div class="form-group mt-2">
+                    <label style="color: white">Agua disponible</label>
+                    <select formControlName="waterAvailable" class="form-control farm-input boolean-select">
+                      <option
+                        *ngIf="editFarmForm.value.waterAvailable !== null && editFarmForm.value.waterAvailable !== true && editFarmForm.value.waterAvailable !== false"
+                        [ngValue]="editFarmForm.value.waterAvailable" disabled selected hidden>
+                        {{ editFarmForm.value.waterAvailable }}
+                      </option>
+                      <option [ngValue]="null">No sé</option>
+                      <option [ngValue]="true">Sí</option>
+                      <option [ngValue]="false">No</option>
+                    </select>
+                  </div>
+                  <div class="form-group mt-2">
+                    <label style="color: white">Tipo de uso de agua</label>
+                    <select formControlName="waterUsageType" class="form-control farm-input">
+                      <option
+                        *ngIf="editFarmForm.value.waterUsageType && ['Riego','Consumo animal','Procesos','Otro'].indexOf(editFarmForm.value.waterUsageType) === -1 && editFarmForm.value.waterUsageType !== ''"
+                        [value]="editFarmForm.value.waterUsageType" disabled selected hidden>
+                        {{ editFarmForm.value.waterUsageType }}
+                      </option>
+                      <option value="">No sé</option>
+                      <option value="Riego">Riego</option>
+                      <option value="Consumo animal">Consumo animal</option>
+                      <option value="Procesos">Procesos</option>
+                      <option value="Otro">Otro</option>
+                    </select>
+                  </div>
+                  <div class="form-group mt-2">
+                    <label style="color: white">Uso de fertilizantes/pesticidas</label>
+                    <select formControlName="fertilizerPesticideUse" class="form-control farm-input boolean-select">
+                      <option
+                        *ngIf="editFarmForm.value.fertilizerPesticideUse !== null && editFarmForm.value.fertilizerPesticideUse !== true && editFarmForm.value.fertilizerPesticideUse !== false"
+                        [ngValue]="editFarmForm.value.fertilizerPesticideUse" disabled selected hidden>
+                        {{ editFarmForm.value.fertilizerPesticideUse }}
+                      </option>
+                      <option [ngValue]="null">No sé</option>
+                      <option [ngValue]="true">Sí</option>
+                      <option [ngValue]="false">No</option>
+                    </select>
+                  </div>
+                </div>
+              </details>
+            </div>
+            <div class="modal-footer dark-modal-footer">
+              <button type="button" class="farm-btn-cancel btn btn-danger"
+                (click)="closeEditFarmModal()">Cancelar</button>
+              <button type="submit" class="btn btn-edit farm-btn farm-btn-edit"
+                [disabled]="editFarmLoading || editFarmForm.invalid || editFarmForm.pristine">Guardar</button>
+            </div>
+          </form>
+        </app-modal>
+      </ng-template>
+      <div *ngIf="showEditFarmModal">
+        <div class="modal-backdrop"></div>
+        <div class="centered-modal create-farm">
+          <ng-container *ngTemplateOutlet="editFarmModal"></ng-container>
+        </div>
+      </div>
+      <ng-template #deleteFarmModal>
+        <app-modal [hideFooter]="true" [useCustomBackGround]="true" modalBodyClass="modal-body dark-modal-body"
+          modalFooterClass="modal-footer dark-modal-footer" modalContentClass="modal-content dark-modal-content">
+          <div>
+            <div class="modal-body mb-4 dark-modal-body">
+              <span class="modal-title-text">¿Está seguro que desea eliminar esta finca?</span>
+            </div>
+            <div class="modal-footer dark-modal-footer">
+              <button class="btn btn-cancel" (click)="closeDeleteModal()" [disabled]="deleteLoading">Cancelar</button>
+              <button class="btn btn-delete" (click)="confirmDeleteFarm()" [disabled]="deleteLoading">
+                <span *ngIf="!deleteLoading">Eliminar</span>
+                <app-loader *ngIf="deleteLoading" size="sm" />
+              </button>
+            </div>
+          </div>
+        </app-modal>
+      </ng-template>
+      <div *ngIf="showDeleteModal">
+        <div class="modal-backdrop"></div>
+        <div class="centered-modal">
+          <ng-container *ngTemplateOutlet="deleteFarmModal"></ng-container>
+        </div>
+      </div>
+      <!-- Eliminar Parcela Modal -->
+      <ng-template #deleteParcelaModal>
+        <app-modal [hideFooter]="true" [useCustomBackGround]="true" modalBodyClass="modal-body dark-modal-body"
+          modalFooterClass="modal-footer dark-modal-footer" modalContentClass="modal-content dark-modal-content">
+          <div>
+            <div class="modal-body mb-4 dark-modal-body">
+              <span class="modal-title-text">¿Está seguro que desea eliminar esta parcela?</span>
+            </div>
+            <div class="modal-footer dark-modal-footer">
+              <button class="btn btn-cancel" (click)="closeDeleteParcelaModal()">Cancelar</button>
+              <button class="btn btn-delete" (click)="confirmDeleteParcela()">
+                <span>Eliminar</span>
+              </button>
+            </div>
+          </div>
+        </app-modal>
+      </ng-template>
+      <div *ngIf="showDeleteParcelaModal">
+        <div class="modal-backdrop"></div>
+        <div class="centered-modal">
+          <ng-container *ngTemplateOutlet="deleteParcelaModal"></ng-container>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>
